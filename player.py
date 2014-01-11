@@ -54,9 +54,9 @@ def sample_bot(host, port):
 					"type": "move",
 					"request_id": msg["request_id"],
 					"response": {
-							"type": "play_card",
-							"card": card_to_play
-							}
+						"type": "play_card",
+						"card": card_to_play
+						}
 					})
 
 
