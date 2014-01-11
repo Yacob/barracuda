@@ -23,7 +23,11 @@ def sample_bot(host, port):
             if msg["state"]["game_id"] != gameId:
                 gameId = msg["state"]["game_id"]
                 print("New game started: " + str(gameId))
-
+            if msg["can_challenge"] and msg["state"]["your_tricks"] >= 3:
+                s.send({
+                    "type": "offer_challenge"
+                })
+            
             if msg["request"] == "request_card":
                 card_to_play = -1
 
@@ -58,17 +62,18 @@ def sample_bot(host, port):
 
 
             elif msg["request"] == "challenge_offered":
-                hand_value = 0;
-                for card in msg["state"]["hand"]:
-                    hand_value += card
-                if (hand_value / (5 - msg["state"]["total_tricks"])) > 11:
-                    s.send({
-                        "type": "move",
-                        "request_id": msg["request_id"],
-                        "response": {
-                            "type": "accept_challenge"
-                            }
-                        })
+                if msg["state"]["your_tricks"] >= msg["state"]["their_tricks"] and msg["state"]["total_tricks"] <= 3:
+                    hand_value = 0;
+                    for card in msg["state"]["hand"]:
+                        hand_value += card
+                        if (hand_value / (5 - msg["state"]["total_tricks"])) >= 11:
+                            s.send({
+                                "type": "move",
+                                "request_id": msg["request_id"],
+                                "response": {
+                                    "type": "accept_challenge"
+                                    }
+                                })
                 else:
                     s.send({
                         "type": "move",
