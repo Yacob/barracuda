@@ -131,11 +131,13 @@ def send_challenge (msg, s):
 	# calculate threshold
 	else:
 		# calculate average hand value
+		hand = state["hand"]
 		hand_value = 0
 		avg_hand_value = 0
 		num_cards = len(msg["state"]["hand"])
 
 		# calculate hand average value
+		hand.sort()
 		hand.reverse()
 		count = 0
 		for card in msg["state"]["hand"]:
@@ -143,7 +145,6 @@ def send_challenge (msg, s):
 			count += 1
 			if count == 3:
 				break
-		hand.reverse()
 
 		avg_hand_value = hand_value / count
 
