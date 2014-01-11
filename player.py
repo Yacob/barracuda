@@ -147,6 +147,9 @@ def play_card(msg, s):
 	if "card" in msg["state"]:
 		value = msg["state"]["card"]
 
+		cards_played["%i" % value] -= 1
+		print ("there are now %i '%i' cards" % (cards_played["%i" % value], value))
+
 		for card in hand:
 			if card > value:
 				card_to_play = card;
