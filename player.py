@@ -8,7 +8,11 @@ import struct
 import time
 import sys
 
-C_THRESHOLD = 10
+DEFAULT_THRESHOLD = 10
+HIGH_THRESHOLD = 11
+HIGHEST_THRESHOLD = 13
+LOW_THRESHOLD = 9
+LOWEST_THRESHOLD = 8
 
 def sample_bot(host, port):
 	s = SocketLayer(host, port)
@@ -46,12 +50,14 @@ def loop(player, *args):
 
 
 def respond_to_request(msg, s):
+	sent_challenge = False
+
 	# automatically challenge if already won
-	if msg["state"]["can_challenge"] and msg["state"]["your_tricks"] >= 3:
-		s.send({
-			"type": "offer_challenge",
-			"request_id": msg["request_id"]
-		})
+	if msg["state"]["can_challenge"] == True:
+		sent_challenge = send_challenge(msg, s)
+
+	if sent_challenge == True:
+		return
 
 	elif msg["request"] == "request_card":
 		play_card(msg, s)
@@ -88,11 +94,16 @@ def play_card(msg, s):
 			else:
 				card_to_play = hand[0]
 
+		# get rid of lowest card if tie is possible
+		if hand[0] == value:
+			card_to_play = hand[0]
+
 
 	# lead with middle card
 	else:
-		index = int((len(hand) - 1) / 2);
-		card_to_play = hand[index]
+		#index = int((len(hand) - 1) / 2);
+		#card_to_play = hand[index]
+		card_to_play = hand[0]
 
 	s.send({
 		"type": "move",
@@ -104,28 +115,124 @@ def play_card(msg, s):
 		})
 
 
-def respond_to_challenge(msg, s):
-	if msg["state"]["your_tricks"] >= msg["state"]["their_tricks"]:
+def send_challenge (msg, s):
+	state = msg["state"]
+	send_challenge = False
+
+	their_points = state["their_points"]
+	our_points = state["your_points"]
+
+	if msg["state"]["your_tricks"] >= 3:
+		send_challenge = True
+
+	elif their_points == 9:
+		send_challenge = True
+
+	# calculate threshold
+	else:
+		# calculate average hand value
 		hand_value = 0
+		avg_hand_value = 0
+		num_cards = len(msg["state"]["hand"])
+
+		# calculate hand average value
+		hand.reverse()
+		count = 0
 		for card in msg["state"]["hand"]:
 			hand_value += card
-		if (hand_value / (5 - msg["state"]["total_tricks"])) >= C_THRESHOLD:
-			s.send({
-				"type": "move",
-				"request_id": msg["request_id"],
-				"response": {
-					"type": "accept_challenge"
-					}
-				})
-		else:
-			s.send({
-				"type": "move",
-				"request_id": msg["request_id"],
-				"response": {
-					"type": "reject_challenge"
+			count += 1
+			if count == 3:
+				break
+		hand.reverse()
+
+		avg_hand_value = hand_value / count
+
+		threshold = DEFAULT_THRESHOLD
+
+		our_tricks = msg["state"]["your_tricks"]
+		their_tricks = msg["state"]["their_tricks"]
+
+		if our_tricks == 2 and their_tricks == 0:
+			threshold = LOWEST_THRESHOLD
+
+		elif our_tricks == 2 and their_tricks == 1:
+			threshold = LOW_THRESHOLD
+
+		elif our_tricks == 2 and their_tricks == 2:
+			threshold = HIGHEST_THRESHOLD
+
+		elif our_tricks == 1 and their_tricks == 2:
+			threshold = HIGHEST_THRESHOLD
+
+		elif our_tricks == 0 and their_tricks == 2:
+			threshold = HIGHEST_THRESHOLD
+
+		elif our_tricks == 0 and their_tricks == 1:
+			threshold = HIGH_THRESHOLD
+
+		if avg_hand_value >= threshold:
+			send_challenge = True
+
+
+	if send_challenge == True:
+		print("issuing challenge")
+		s.send({
+			"type": "move",
+			"request_id": msg["request_id"],
+			"response": {
+				"type": "offer_challenge"
+			}
+		})
+
+	return send_challenge
+
+
+def respond_to_challenge(msg, s):
+	hand_value = 0
+	avg_hand_value = 0
+	num_cards = len(msg["state"]["hand"])
+
+	# calculate hand average value
+	for card in msg["state"]["hand"]:
+		hand_value += card
+
+	avg_hand_value = hand_value / num_cards
+
+	# calculate threshold
+	threshold = DEFAULT_THRESHOLD
+
+	our_tricks = msg["state"]["your_tricks"]
+	their_tricks = msg["state"]["their_tricks"]
+
+	if our_tricks == 2 and their_tricks == 0:
+		threshold = LOWEST_THRESHOLD
+
+	elif our_tricks == 2 and their_tricks == 1:
+		threshold = LOW_THRESHOLD
+
+	elif our_tricks == 2 and their_tricks == 2:
+		threshold = HIGHEST_THRESHOLD
+
+	elif our_tricks == 1 and their_tricks == 2:
+		threshold = HIGH_THRESHOLD
+
+	elif our_tricks == 0 and their_tricks == 2:
+		threshold = HIGH_THRESHOLD
+
+	elif our_tricks == 0 and their_tricks == 1:
+		threshold = HIGH_THRESHOLD
+
+	if avg_hand_value >= threshold:
+		print("accepting challenge: hand = %i; thresh = %i" % ( avg_hand_value, threshold ))
+		s.send({
+			"type": "move",
+			"request_id": msg["request_id"],
+			"response": {
+				"type": "accept_challenge"
 				}
 			})
 	else:
+		print("rejecting challenge: hand = %i; thresh = %i" % ( avg_hand_value, threshold ))
 		s.send({
 			"type": "move",
 			"request_id": msg["request_id"],
