@@ -133,6 +133,10 @@ def send_challenge (msg, s):
 	if msg["state"]["your_tricks"] >= tricks_to_tie:
 		send_challenge = True
 
+	# last ditch challenge
+	elif their_points == 9:
+		send_challenge = True
+
 	elif "card" in state:
 		our_card = -1
 		their_card = state["card"]
@@ -157,10 +161,6 @@ def send_challenge (msg, s):
 	# don't challenge if we can't win
 	elif state["their_tricks"] >= tricks_to_tie:
 		return
-
-	# last ditch challenge
-	elif their_points == 9:
-		send_challenge = True
 
 	# calculate threshold
 	else:
@@ -225,6 +225,11 @@ def meet_threshold (msg, tricks_to_tie):
 	elif our_tricks == 0 and their_tricks == 1:
 		threshold = HIGH_THRESHOLD
 
+	# only happens if we played a card
+	if "card" in state and threshold < HIGHEST_THRESHOLD:
+		threshold += 1
+
+
 	if (avg_hand_value >= threshold):
 		print("accepting challenge: hand = %i; thresh = %i" % ( avg_hand_value, threshold ))
 	else:
@@ -247,7 +252,14 @@ def respond_to_challenge(msg, s):
 	# calculate tricks needed to win
 	tricks_to_tie = (5 - state["total_tricks"] + our_tricks + their_tricks) / 2
 
-	if meet_threshold(msg, tricks_to_tie) or their_points == 9:
+	accept = False
+	if meet_threshold(msg, tricks_to_tie):
+		accept = True
+
+	elif their_points == 9:
+		accept = True
+
+	if accept == True:
 		s.send({
 			"type": "move",
 			"request_id": msg["request_id"],
