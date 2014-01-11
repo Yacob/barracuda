@@ -248,6 +248,9 @@ def send_challenge (msg, s):
 		elif our_card == their_card and our_tricks >= tricks_to_tie:
 			send_challenge = True
 
+		elif len(hand) == 1 and our_tricks == their_tricks and their_card <= 10:
+			send_challenge = True
+
 		else:
 			send_challenge = meet_threshold(msg, tricks_to_tie)
 
