@@ -19,6 +19,7 @@ DUMB_MODE = False
 cards_played = {}
 hands_played = 0
 hand_id = -1
+prev_hand_id = -1
 
 def shuffle_deck ():
 	global hands_played
@@ -60,6 +61,7 @@ def sample_bot(host, port):
 	global hands_played
 	global hand_id
 	global hands_played
+	global prev_hand_id
 
 	s = SocketLayer(host, port)
 	gameId = None
@@ -82,6 +84,9 @@ def sample_bot(host, port):
 				hand_id = msg["state"]["hand_id"]
 				shuffle_deck()
 				print("New game started: " + str(gameId))
+				hand = msg["state"]["hand"]
+                                for card in hand:
+                                        cards_played["%i" % card] -= 1
 
 
 			# run main response
@@ -89,6 +94,10 @@ def sample_bot(host, port):
 
 			# shuffle deck if needed
 			if msg["state"]["hand_id"] != hand_id:
+                                hand_id = msg["state"]["hand_id"]
+                                hand = msg["state"]["hand"]
+                                for card in hand:
+                                        cards_played["%i" % card] -= 1
 				hands_played += 1
 				print("hands played: %i" % hands_played)
 
