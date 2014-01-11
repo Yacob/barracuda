@@ -151,6 +151,10 @@ def send_challenge (msg, s):
 	elif their_points == 9:
 		send_challenge = True
 
+	# don't challenge if we can't win
+	elif state["their_tricks"] >= tricks_to_tie:
+		return
+
 	elif "card" in state:
 		our_card = -1
 		their_card = state["card"]
@@ -175,9 +179,6 @@ def send_challenge (msg, s):
 			send_challenge = meet_threshold(msg, tricks_to_tie)
 
 
-	# don't challenge if we can't win
-	elif state["their_tricks"] >= tricks_to_tie:
-		return
 
 	# calculate threshold
 	else:
@@ -243,7 +244,7 @@ def meet_threshold (msg, tricks_to_tie):
 		threshold = HIGH_THRESHOLD
 
 	# only happens if we played a card
-	if "card" in state and threshold < HIGHEST_THRESHOLD:
+	if "card" in state and msg["request"] == "challenge_offered":
 		threshold += 1
 
 	if DUMB_MODE == True:
