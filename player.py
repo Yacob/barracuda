@@ -85,7 +85,7 @@ def play_card(msg, s):
 				card_to_play = value
 
 			# throw away lowest card
-			else
+			else:
 				card_to_play = hand[0]
 
 
