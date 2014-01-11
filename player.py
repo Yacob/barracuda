@@ -9,8 +9,7 @@ import time
 import sys
 
 def sample_bot(host, port):
-		s = SocketLayer(host, port)
-
+	s = SocketLayer(host, port)
 	gameId = None
 
 	while True:
@@ -86,29 +85,29 @@ def sample_bot(host, port):
 				print("Connected to the server.")
 
 def loop(player, *args):
-		while True:
-				try:
-						player(*args)
+	while True:
+		try:
+			player(*args)
 		except KeyboardInterrupt:
-				sys.exit(0)
+			sys.exit(0)
 		except Exception as e:
-				print(repr(e))
+			print(repr(e))
 		time.sleep(10)
 
 class SocketLayer:
-		def __init__(self, host, port):
-				self.s = socket.socket()
+	def __init__(self, host, port):
+		self.s = socket.socket()
 		self.s.connect((host, port))
 
 	def pump(self):
-			"""Gets the next message from the socket."""
+		"""Gets the next message from the socket."""
 		sizebytes = self.s.recv(4)
 		(size,) = struct.unpack("!L", sizebytes)
 
 		msg = []
 		bytesToGet = size
 		while bytesToGet > 0:
-				b = self.s.recv(bytesToGet)
+			b = self.s.recv(bytesToGet)
 			bytesToGet -= len(b)
 			msg.append(b)
 
@@ -116,14 +115,14 @@ class SocketLayer:
 
 		return json.loads(msg)
 
-def send(self, obj):
+	def send(self, obj):
 		"""Send a JSON message down the socket."""
 		b = json.dumps(obj)
 		length = struct.pack("!L", len(b))
 		self.s.send(length + b.encode('utf-8'))
 
 	def raw_send(self, data):
-			self.s.send(data)
+		self.s.send(data)
 
 if __name__ == "__main__":
-		loop(sample_bot, "cuda.contest", 9999)
+	loop(sample_bot, "cuda.contest", 9999)
