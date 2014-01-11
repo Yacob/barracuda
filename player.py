@@ -32,7 +32,7 @@ def sample_bot(host, port):
                 hand.sort()
 
                 # responding to played card
-                if card in msg["state"]:
+                if "card" in msg["state"]:
                     value = msg["state"]["card"]
                     for card in hand:
                         if card > value:
