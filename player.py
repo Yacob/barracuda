@@ -24,9 +24,9 @@ def shuffle_deck ():
 	global hands_played
 	global cards_played
 
-	#print("deck state")
-	#for value in cards_played:
-	#	print("%s: %i" % (value, cards_played[value]))
+	print("deck state")
+	for value in cards_played:
+		print("%s: %i" % (value, cards_played[value]))
 
 	print("shuffling deck after %i" % hands_played)
 	for value in range(1, 14):
@@ -79,6 +79,7 @@ def sample_bot(host, port):
 			if msg["state"]["game_id"] != gameId:
 				gameId = msg["state"]["game_id"]
 				hand_id = msg["state"]["hand_id"]
+				hands_played = 0
 				shuffle_deck()
 				print("New game started: " + str(gameId))
 
@@ -88,6 +89,7 @@ def sample_bot(host, port):
 
 			# shuffle deck if needed
 			if msg["state"]["hand_id"] != hand_id:
+				hand_id = msg["state"]["hand_id"]
 				hands_played += 1
 				print("hands played: %i" % hands_played)
 
