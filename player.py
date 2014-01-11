@@ -58,13 +58,25 @@ def sample_bot(host, port):
 
 
             elif msg["request"] == "challenge_offered":
-                s.send({
-                    "type": "move",
-                    "request_id": msg["request_id"],
-                    "response": {
-                        "type": "reject_challenge"
-                        }
-                    })
+                hand_value = 0;
+                for card in msg["state"]["hand"]:
+                    hand_value += card
+                if (hand_value / (5 - msg["state"]["total_tricks"])) > 11:
+                    s.send({
+                        "type": "move",
+                        "request_id": msg["request_id"],
+                        "response": {
+                            "type": "accept_challenge"
+                            }
+                        })
+                else:
+                    s.send({
+                        "type": "move",
+                        "request_id": msg["request_id"],
+                        "response": {
+                            "type": "reject_challenge"
+                            }
+                        })
 
         elif msg["type"] == "greetings_program":
             print("Connected to the server.")
