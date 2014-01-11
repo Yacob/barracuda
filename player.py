@@ -78,21 +78,25 @@ def sample_bot(host, port):
 			# start new game
 			if msg["state"]["game_id"] != gameId:
 				gameId = msg["state"]["game_id"]
-				hand_id = msg["state"]["hand_id"]
 				hands_played = 0
 				shuffle_deck()
 				print("New game started: " + str(gameId))
 
-
-			# run main response
-			respond_to_request(msg, s)
-
-			# shuffle deck if needed
+			# get new hand attributes
 			if msg["state"]["hand_id"] != hand_id:
 				hand_id = msg["state"]["hand_id"]
 				hands_played += 1
 				print("hands played: %i" % hands_played)
 
+				# update deck with our cards
+				for value in msg["state"]["hand"]:
+					cards_played["%i" % value] -= 1
+					print ("there are now %i '%i' cards" % (cards_played["%i" % value], value))
+
+			# run main response
+			respond_to_request(msg, s)
+
+			# shuffle deck
 			if hands_played >= 10:
 				shuffle_deck()
 				hands_played = 0
@@ -139,11 +143,6 @@ def play_card(msg, s):
 	# sort hand
 	hand = msg["state"]["hand"]
 	hand.sort()
-
-	if len(hand) == 5:
-		for value in hand:
-			cards_played["%i" % value] -= 1
-			print ("there are now %i '%i' cards" % (cards_played["%i" % value], value))
 
 	# responding to played card
 	if "card" in msg["state"]:
