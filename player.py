@@ -1,6 +1,5 @@
 #!/usr/bin/python
-
-# This should work in both recent Python 2 and Python 3.
+# vim: set ts=4 noexpandtab:
 
 import socket
 import json
