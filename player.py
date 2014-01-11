@@ -333,6 +333,17 @@ def meet_threshold (msg, tricks_to_tie):
 	if DUMB_MODE == True:
 		threshold = 7
 
+	threshold_scalar = 0
+	total_cards_in_deck = 0
+	for key in cards_played:
+		threshold_scalar += (cards_played[key] * key)
+		total_cards_in_deck += cards_played[key]
+
+	threshold_scalar /= (total_cards_in_deck * 7)
+
+	print("scalar is " + threshold_scalar)
+	threshold *= threshold_scalar
+
 	if (avg_hand_value > threshold or avg_hand_value >= HIGHEST_THRESHOLD):
 		print("accepting challenge: hand = %i; thresh = %i" % ( avg_hand_value, threshold ))
 	else:
