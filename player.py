@@ -18,18 +18,54 @@ def sample_bot(host, port):
         if msg["type"] == "error":
             print("The server doesn't know your IP. It saw: " + msg["seen_host"])
             sys.exit(1)
+
         elif msg["type"] == "request":
             if msg["state"]["game_id"] != gameId:
                 gameId = msg["state"]["game_id"]
                 print("New game started: " + str(gameId))
 
             if msg["request"] == "request_card":
-                cardToPlay = msg["state"]["hand"][0]
-                s.send({"type": "move", "request_id": msg["request_id"],
-                    "response": {"type": "play_card", "card": cardToPlay}})
+                card_to_play = -1
+
+                # sort hand
+                hand = msg["state"]["hand"]
+                hand.sort()
+
+                # responding to played card
+                if card in msg["state"]:
+                    value = msg["state"]["card"]
+                    for card in hand:
+                        if card > value:
+                            card_to_play = card;
+                            break;
+
+                    if card_to_play == -1:
+                        card_to_play = hand[0]
+
+
+                # leading with a card
+                else:
+                    card_to_play = hand[0]
+
+                s.send({
+                    "type": "move",
+                    "request_id": msg["request_id"],
+                    "response": {
+                        "type": "play_card",
+                        "card": card_to_play
+                        }
+                    })
+
+
             elif msg["request"] == "challenge_offered":
-                s.send({"type": "move", "request_id": msg["request_id"],
-                        "response": {"type": "reject_challenge"}})
+                s.send({
+                    "type": "move",
+                    "request_id": msg["request_id"],
+                    "response": {
+                        "type": "reject_challenge"
+                        }
+                    })
+
         elif msg["type"] == "greetings_program":
             print("Connected to the server.")
 
