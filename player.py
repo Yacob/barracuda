@@ -8,6 +8,8 @@ import struct
 import time
 import sys
 
+C_THRESHOLD = 10
+
 def sample_bot(host, port):
 	s = SocketLayer(host, port)
 	gameId = None
@@ -60,6 +62,9 @@ def respond_to_request(msg, s):
 
 def play_card(msg, s):
 	card_to_play = -1
+	our_tricks = msg["state"]["your_tricks"]
+	their_tricks = msg["state"]["their_tricks"]
+
 	# sort hand
 	hand = msg["state"]["hand"]
 	hand.sort()
@@ -67,12 +72,21 @@ def play_card(msg, s):
 	# responding to played card
 	if "card" in msg["state"]:
 		value = msg["state"]["card"]
+		winning = our_tricks >= their_tricks
+
 		for card in hand:
 			if card > value:
 				card_to_play = card;
 				break;
+
 		if card_to_play == -1:
-			card_to_play = hand[0]
+			# force a tie if we are losing
+			if winning == False and value in hand:
+				card_to_play = value
+
+			# throw away lowest card
+			else
+				card_to_play = hand[0]
 
 
 	# lead with middle card
@@ -95,7 +109,7 @@ def respond_to_challenge(msg, s):
 		hand_value = 0
 		for card in msg["state"]["hand"]:
 			hand_value += card
-		if (hand_value / (5 - msg["state"]["total_tricks"])) >= 11:
+		if (hand_value / (5 - msg["state"]["total_tricks"])) >= C_THRESHOLD:
 			s.send({
 				"type": "move",
 				"request_id": msg["request_id"],
