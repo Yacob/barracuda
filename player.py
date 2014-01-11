@@ -1,5 +1,5 @@
 #!/usr/bin/python
-
+# vim: set ts=4 noexpandtab:
 # This should work in both recent Python 2 and Python 3.
 
 import socket
@@ -8,45 +8,184 @@ import struct
 import time
 import sys
 
-def sample_bot(host, port):
-	s = SocketLayer(host, port)
+DEFAULT_THRESHOLD = 11
+HIGH_THRESHOLD = 11
+HIGHEST_THRESHOLD = 12
+LOW_THRESHOLD = 9
+LOWEST_THRESHOLD = 8
 
+DUMB_MODE = False
+
+cards_played = {}
+hands_played = 0
+hand_id = -1
+
+def shuffle_deck ():
+	global hands_played
+	global cards_played
+
+	#print("deck state")
+	#for value in cards_played:
+	#	print("%s: %i" % (value, cards_played[value]))
+
+	print("shuffling deck after %i" % hands_played)
+	for value in range(1, 14):
+		cards_played["%i" % value] = 8
+
+def update_deck (msg):
+	global cards_played
+
+	our_number = msg["your_player_num"]
+
+	if "by" not in msg["result"]:
+		return
+
+	if "card" not in msg["result"]:
+		return
+
+	player = msg["result"]["by"]
+	value = msg["result"]["card"]
+
+	# don't double count
+	if our_number == player:
+		return
+
+	cards_played["%i" % value] -= 1
+
+	#print("there are now %i '%i' cards" % (cards_played["%i" % value], value))
+
+
+def sample_bot(host, port):
+
+	global hands_played
+	global hand_id
+	global hands_played
+
+	s = SocketLayer(host, port)
 	gameId = None
 
 	while True:
+		# read message
 		msg = s.pump()
+
+		if msg["type"] == "result":
+			update_deck(msg)
+
 		if msg["type"] == "error":
 			print("The server doesn't know your IP. It saw: " + msg["seen_host"])
 			sys.exit(1)
 
 		elif msg["type"] == "request":
-			respond_to_request(msg);
+			# start new game
+			if msg["state"]["game_id"] != gameId:
+				gameId = msg["state"]["game_id"]
+				hand_id = msg["state"]["hand_id"]
+				shuffle_deck()
+				print("New game started: " + str(gameId))
+
+
+			# run main response
+			respond_to_request(msg, s)
+
+			# shuffle deck if needed
+			if msg["state"]["hand_id"] != hand_id:
+				hands_played += 1
+				print("hands played: %i" % hands_played)
+
+			if hands_played >= 10:
+				shuffle_deck()
+				hands_played = 0
+
 		elif msg["type"] == "greetings_program":
-			print("Connected to the server.")
+			print("connected to the server.")
 
 def loop(player, *args):
 	while True:
-		try:
-			player(*args)
-		except KeyboardInterrupt:
-			sys.exit(0)
-		except Exception as e:
-			print(repr(e))
+		player(*args)
+		#try:
+		#	player(*args)
+		#except KeyboardInterrupt:
+		#	sys.exit(0)
+		#except Exception as e:
+		#	print(e)
 		time.sleep(10)
 
-def play_card(msg):
+
+def respond_to_request(msg, s):
+	sent_challenge = False
+
+	# automatically challenge if already won
+	if msg["state"]["can_challenge"] == True:
+		sent_challenge = send_challenge(msg, s)
+
+	if sent_challenge == True:
+		return
+
+	elif msg["request"] == "request_card":
+		play_card(msg, s)
+
+	elif msg["request"] == "challenge_offered":
+		respond_to_challenge(msg, s)
+
+
+def play_card(msg, s):
+	global cards_played
+	state = msg["state"]
 	card_to_play = -1
+	our_tricks = msg["state"]["your_tricks"]
+	their_tricks = msg["state"]["their_tricks"]
+
 	# sort hand
 	hand = msg["state"]["hand"]
 	hand.sort()
 
+	if len(hand) == 5:
+		for value in hand:
+			cards_played["%i" % value] -= 1
+			print ("there are now %i '%i' cards" % (cards_played["%i" % value], value))
+
 	# responding to played card
 	if "card" in msg["state"]:
-		respond_to_card(msg, hand);
-		
-	# leading with a card
+		value = msg["state"]["card"]
+
+		cards_played["%i" % value] -= 1
+		print ("there are now %i '%i' cards" % (cards_played["%i" % value], value))
+
+		for card in hand:
+			if card > value:
+				card_to_play = card;
+				break;
+
+		# force a tie if we are losing
+		#if value in hand and our_tricks <= their_tricks:
+		#	card_to_play = value
+
+		if card_to_play == -1:
+			card_to_play = hand[0]
+
+		# get rid of lowest card if tie is possible
+		if hand[0] == value:
+			card_to_play = hand[0]
+
+
 	else:
-		card_to_play = hand[0]
+		#index = int((len(hand) - 1) / 2);
+		#card_to_play = hand[index]
+		tricks_to_tie = (5 - state["total_tricks"] + our_tricks + their_tricks) / 2
+
+		# calculates the number of relevant cards
+		num_top_cards = tricks_to_tie - our_tricks;
+		hand.reverse()
+
+		# the card immediately after our top cards is at index num_top_cards
+		try:
+			card_to_play = hand[int(num_top_cards + 0.5)]
+
+		# in the case where it is out of bounds, select the lowest top card
+		except:
+			card_to_play = hand[-1]
+
+		hand.reverse()
 
 	s.send({
 		"type": "move",
@@ -57,33 +196,167 @@ def play_card(msg):
 			}
 		})
 
-def respond_to_card(msg, hand):
-	value = msg["state"]["card"]
+def send_challenge (msg, s):
+	state = msg["state"]
+	hand = state["hand"]
+	send_challenge = False
 
-	for card in hand:
-		if card > value:
-			card_to_play = card;
-			break;
+	their_points = state["their_points"]
+	their_tricks = state["their_tricks"]
 
-	if card_to_play == -1:
-		card_to_play = hand[0]
+	our_points = state["your_points"]
+	our_tricks = state["your_tricks"]
 
-def respond_to_request(msg):
-	if msg["state"]["game_id"] != gameId:
-		gameId = msg["state"]["game_id"]
-		print("New game started: " + str(gameId))
+	# calculate tricks needed to win
+	tricks_to_tie = (5 - state["total_tricks"] + our_tricks + their_tricks) / 2
 
-	if msg["request"] == "request_card":
-		play_card(msg);
+	# always challenge if we'll atleast tie
+	if msg["state"]["your_tricks"] >= tricks_to_tie:
+		send_challenge = True
 
-	elif msg["request"] == "challenge_offered":
-		respond_to_challenge(msg);
+	# last ditch challenge
+	elif their_points == 9:
+		send_challenge = True
 
-def respond_to_challenge(msg):
-	hand_value = 0;
+	# why would we challeng if we are in the lead?
+	elif our_points == 9:
+		return
+
+	# don't challenge if we can't win
+	elif state["their_tricks"] >= tricks_to_tie:
+		return
+
+	elif "card" in state:
+		our_card = -1
+		their_card = state["card"]
+
+		# calculate card to play
+		hand.sort()
+		hand.reverse()
+		for card in hand:
+			if card >= their_card:
+				our_card = card
+				break
+
+		# if our card is better and we can tie
+		if our_card > their_card and our_tricks >= tricks_to_tie - 1:
+			send_challenge = True
+
+		# if we tie
+		elif our_card == their_card and our_tricks >= tricks_to_tie:
+			send_challenge = True
+
+		else:
+			send_challenge = meet_threshold(msg, tricks_to_tie)
+
+
+
+	# calculate threshold
+	else:
+		send_challenge = meet_threshold(msg, tricks_to_tie)
+
+
+	if send_challenge == True:
+		print("issuing challenge")
+		s.send({
+			"type": "move",
+			"request_id": msg["request_id"],
+			"response": {
+				"type": "offer_challenge"
+			}
+		})
+
+	return send_challenge
+
+def meet_threshold (msg, tricks_to_tie):
+	state = msg["state"]
+	num_tricks = state["total_tricks"]
+	our_tricks = state["your_tricks"]
+	their_tricks = state["their_tricks"]
+
+	hand_value = 0
+	avg_hand_value = 0
+	hand = state["hand"]
+
+	# calculate hand average value
+	hand.sort()
+	hand.reverse()
+	count = 0
 	for card in msg["state"]["hand"]:
 		hand_value += card
-	if (hand_value / (5 - msg["state"]["total_tricks"])) > 11:
+		count += 1
+		if count >= tricks_to_tie - our_tricks:
+			break
+
+	avg_hand_value = hand_value / count
+
+	# calculate threshold
+	threshold = DEFAULT_THRESHOLD
+
+	our_tricks = msg["state"]["your_tricks"]
+	their_tricks = msg["state"]["their_tricks"]
+
+	if our_tricks == 2 and their_tricks == 0:
+		threshold = LOWEST_THRESHOLD
+
+	elif our_tricks == 2 and their_tricks == 1:
+		threshold = LOW_THRESHOLD
+
+	elif our_tricks == 2 and their_tricks == 2:
+		threshold = HIGHEST_THRESHOLD
+
+	elif our_tricks == 1 and their_tricks == 2:
+		threshold = HIGHEST_THRESHOLD
+
+	elif our_tricks == 0 and their_tricks == 2:
+		threshold = HIGHEST_THRESHOLD
+
+	elif our_tricks == 0 and their_tricks == 1:
+		threshold = HIGH_THRESHOLD
+
+	# only happens if we played a card
+	if "card" in state and msg["request"] == "challenge_offered":
+		threshold += 1
+
+	if state["your_points"] == 9:
+		threshold -= 1
+
+	if DUMB_MODE == True:
+		threshold = 7
+
+	if (avg_hand_value > threshold or avg_hand_value >= HIGHEST_THRESHOLD):
+		print("accepting challenge: hand = %i; thresh = %i" % ( avg_hand_value, threshold ))
+	else:
+		print("rejecting challenge: hand = %i; thresh = %i" % ( avg_hand_value, threshold ))
+
+	return avg_hand_value > threshold or avg_hand_value >= HIGHEST_THRESHOLD
+
+
+
+def respond_to_challenge(msg, s):
+	state = msg["state"]
+	send_challenge = False
+
+	their_points = state["their_points"]
+	their_tricks = state["their_tricks"]
+
+	our_points = state["your_points"]
+	our_tricks = state["your_tricks"]
+
+	# calculate tricks needed to win
+	tricks_to_tie = (5 - state["total_tricks"] + our_tricks + their_tricks) / 2
+
+	accept = False
+	if meet_threshold(msg, tricks_to_tie):
+		accept = True
+
+	elif their_points == 9:
+		accept = True
+
+	if their_tricks >= tricks_to_tie:
+		accept = False
+
+	if accept == True:
 		s.send({
 			"type": "move",
 			"request_id": msg["request_id"],
@@ -97,8 +370,8 @@ def respond_to_challenge(msg):
 			"request_id": msg["request_id"],
 			"response": {
 				"type": "reject_challenge"
-				}
-			})
+			}
+		})
 
 class SocketLayer:
 	def __init__(self, host, port):
