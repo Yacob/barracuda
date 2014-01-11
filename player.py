@@ -16,13 +16,59 @@ LOWEST_THRESHOLD = 8
 
 DUMB_MODE = False
 
+cards_played = {}
+hands_played = 0
+hand_id = -1
+
+def shuffle_deck ():
+	global hands_played
+	global cards_played
+
+	print("deck state")
+	for value in cards_played:
+		print("%s: %i" % (value, cards_played[value]))
+
+	print("shuffling deck after %i" % hands_played)
+	for value in range(1, 14):
+		cards_played["%i" % value] = 8
+
+def update_deck (msg):
+	global cards_played
+
+	our_number = msg["your_player_num"]
+
+	if "by" not in msg["result"]:
+		return
+
+	if "card" not in msg["result"]:
+		return
+
+	player = msg["result"]["by"]
+	value = msg["result"]["card"]
+
+	# don't double count
+	if our_number == player:
+		return
+
+	cards_played["%i" % value] -= 1
+
+	print("there are now %i '%i' cards" % (cards_played["%i" % value], value))
+
+
 def sample_bot(host, port):
+	global hands_played
+	global hand_id
+	global hands_played
+
 	s = SocketLayer(host, port)
 	gameId = None
 
 	while True:
 		# read message
 		msg = s.pump()
+
+		if msg["type"] == "result":
+			update_deck(msg)
 
 		if msg["type"] == "error":
 			print("The server doesn't know your IP. It saw: " + msg["seen_host"])
@@ -32,9 +78,22 @@ def sample_bot(host, port):
 			# start new game
 			if msg["state"]["game_id"] != gameId:
 				gameId = msg["state"]["game_id"]
+				hand_id = msg["state"]["hand_id"]
+				shuffle_deck()
 				print("New game started: " + str(gameId))
 
+
+			# run main response
 			respond_to_request(msg, s)
+
+			# shuffle deck if needed
+			if msg["state"]["hand_id"] != hand_id:
+				hands_played += 1
+				print("hands played: %i" % hands_played)
+
+			if hands_played >= 10:
+				shuffle_deck()
+				hands_played = 0
 
 		elif msg["type"] == "greetings_program":
 			print("connected to the server.")
@@ -69,6 +128,7 @@ def respond_to_request(msg, s):
 
 
 def play_card(msg, s):
+	global cards_played
 	state = msg["state"]
 	card_to_play = -1
 	our_tricks = msg["state"]["your_tricks"]
@@ -77,6 +137,11 @@ def play_card(msg, s):
 	# sort hand
 	hand = msg["state"]["hand"]
 	hand.sort()
+
+	if len(hand) == 5:
+		for value in hand:
+			cards_played["%i" % value] -= 1
+			print ("there are now %i '%i' cards" % (cards_played["%i" % value], value))
 
 	# responding to played card
 	if "card" in msg["state"]:
@@ -150,6 +215,10 @@ def send_challenge (msg, s):
 	# last ditch challenge
 	elif their_points == 9:
 		send_challenge = True
+
+	# why would we challeng if we are in the lead?
+	elif our_points == 9:
+		return
 
 	# don't challenge if we can't win
 	elif state["their_tricks"] >= tricks_to_tie:
@@ -248,14 +317,14 @@ def meet_threshold (msg, tricks_to_tie):
 		threshold += 1
 
 	if DUMB_MODE == True:
-		threshold = 5
+		threshold = 7
 
-	if (avg_hand_value >= threshold):
+	if (avg_hand_value > threshold or avg_hand_value >= HIGHEST_THRESHOLD):
 		print("accepting challenge: hand = %i; thresh = %i" % ( avg_hand_value, threshold ))
 	else:
 		print("rejecting challenge: hand = %i; thresh = %i" % ( avg_hand_value, threshold ))
 
-	return avg_hand_value >= threshold
+	return avg_hand_value > threshold or avg_hand_value >= HIGHEST_THRESHOLD
 
 
 
