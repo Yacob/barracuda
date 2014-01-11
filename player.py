@@ -24,9 +24,9 @@ def shuffle_deck ():
 	global hands_played
 	global cards_played
 
-	print("deck state")
-	for value in cards_played:
-		print("%s: %i" % (value, cards_played[value]))
+	#print("deck state")
+	#for value in cards_played:
+	#	print("%s: %i" % (value, cards_played[value]))
 
 	print("shuffling deck after %i" % hands_played)
 	for value in range(1, 14):
@@ -52,7 +52,7 @@ def update_deck (msg):
 
 	cards_played["%i" % value] -= 1
 
-	print("there are now %i '%i' cards" % (cards_played["%i" % value], value))
+	#print("there are now %i '%i' cards" % (cards_played["%i" % value], value))
 
 
 def sample_bot(host, port):
@@ -315,6 +315,9 @@ def meet_threshold (msg, tricks_to_tie):
 	# only happens if we played a card
 	if "card" in state and msg["request"] == "challenge_offered":
 		threshold += 1
+
+	if state["your_points"] == 9:
+		threshold -= 1
 
 	if DUMB_MODE == True:
 		threshold = 7
