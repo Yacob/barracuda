@@ -78,28 +78,25 @@ def play_card(msg, s):
 	# responding to played card
 	if "card" in msg["state"]:
 		value = msg["state"]["card"]
-		winning = our_tricks >= their_tricks
 
 		for card in hand:
 			if card > value:
 				card_to_play = card;
 				break;
 
-		if card_to_play == -1:
-			# force a tie if we are losing
-			if winning == False and value in hand:
-				card_to_play = value
+		# force a tie if we are losing
+		if value in hand and our_tricks <= their_tricks:
+			card_to_play = value
 
-			# throw away lowest card
-			else:
-				card_to_play = hand[0]
+		if card_to_play == -1:
+			card_to_play = hand[0]
 
 		# get rid of lowest card if tie is possible
 		if hand[0] == value:
 			card_to_play = hand[0]
 
 
-	# lead with middle card
+	# lead with lowest card
 	else:
 		#index = int((len(hand) - 1) / 2);
 		#card_to_play = hand[index]
