@@ -22,6 +22,8 @@ cards_played = {}
 hands_played = 0
 hand_id = -1
 
+SO_CODE = 35
+
 def shuffle_deck ():
 	global hands_played
 	global cards_played
@@ -333,6 +335,9 @@ def meet_threshold (msg, tricks_to_tie):
 
 	if DUMB_MODE == True:
 		threshold = 7
+
+	if state["opponent_id"] == SO_CODE:
+		threshold -= 1
 
 	threshold_scalar = 0
 	total_cards_in_deck = 0
