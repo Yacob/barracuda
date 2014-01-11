@@ -12,7 +12,7 @@ DEFAULT_THRESHOLD = 11
 HIGH_THRESHOLD = 12
 HIGHEST_THRESHOLD = 13
 LOW_THRESHOLD = 10
-LOWEST_THRESHOLD = 9
+LOWEST_THRESHOLD = 8
 
 DUMB_MODE = False
 
@@ -102,26 +102,22 @@ def play_card(msg, s):
 	else:
 		#index = int((len(hand) - 1) / 2);
 		#card_to_play = hand[index]
-		if state["in_challenge"] == True:
-			tricks_to_tie = (5 - state["total_tricks"] + our_tricks + their_tricks) / 2
+		tricks_to_tie = (5 - state["total_tricks"] + our_tricks + their_tricks) / 2
 
-			# calculates the number of relevant cards
-			num_top_cards = tricks_to_tie - our_tricks;
-			hand.reverse()
+		# calculates the number of relevant cards
+		num_top_cards = tricks_to_tie - our_tricks;
+		hand.reverse()
 
-			# the card immediately after our top cards is at index num_top_cards
-			try:
-				card_to_play = hand[int(num_top_cards)]
+		# the card immediately after our top cards is at index num_top_cards
+		try:
+			card_to_play = hand[int(num_top_cards + 0.5)]
 
-			# in the case where it is out of bounds, select the lowest top card
-			except:
-				card_to_play = hand[-1]
+		# in the case where it is out of bounds, select the lowest top card
+		except:
+			card_to_play = hand[-1]
 
-			hand.reverse()
+		hand.reverse()
 
-		# lead with lowest card
-		else:
-			card_to_play = hand[0]
 
 	s.send({
 		"type": "move",
@@ -278,6 +274,9 @@ def respond_to_challenge(msg, s):
 
 	elif their_points == 9:
 		accept = True
+
+	if their_tricks >= tricks_to_tie:
+		accept = False
 
 	if accept == True:
 		s.send({
