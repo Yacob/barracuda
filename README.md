@@ -1,4 +1,0 @@
-barracuda
-=========
-
-TIGERS
