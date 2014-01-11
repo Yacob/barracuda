@@ -13,44 +13,52 @@ def sample_bot(host, port):
 	gameId = None
 
 	while True:
+		# read message
 		msg = s.pump()
+
 		if msg["type"] == "error":
 			print("The server doesn't know your IP. It saw: " + msg["seen_host"])
 			sys.exit(1)
 
 		elif msg["type"] == "request":
-			respond_to_request(msg)
+			# start new game
+			if msg["state"]["game_id"] != gameId:
+				gameId = msg["state"]["game_id"]
+				print("New game started: " + str(gameId))
+
+			respond_to_request(msg, s)
+
 		elif msg["type"] == "greetings_program":
 			print("connected to the server.")
 
 def loop(player, *args):
 	while True:
-		try:
-			player(*args)
-		except KeyboardInterrupt:
-			sys.exit(0)
-		except Exception as e:
-			print(repr(e))
+		player(*args)
+		#try:
+		#	player(*args)
+		#except KeyboardInterrupt:
+		#	sys.exit(0)
+		#except Exception as e:
+		#	print(e)
 		time.sleep(10)
 
 
-def respond_to_request(msg):
-	# message type is request
-	if msg["state"]["game_id"] != gameId:
-		gameId = msg["state"]["game_id"]
-		print("New game started: " + str(gameId))
-	if msg["can_challenge"] and msg["state"]["your_tricks"] >= 3:
+def respond_to_request(msg, s):
+	# automatically challenge if already won
+	if msg["state"]["can_challenge"] and msg["state"]["your_tricks"] >= 3:
 		s.send({
-			"type": "offer_challenge"
+			"type": "offer_challenge",
+			"request_id": msg["request_id"]
 		})
+
 	elif msg["request"] == "request_card":
-		play_card(msg)
+		play_card(msg, s)
 
 	elif msg["request"] == "challenge_offered":
-		respond_to_challenge(msg)
+		respond_to_challenge(msg, s)
 
 
-def play_card(msg):
+def play_card(msg, s):
 	card_to_play = -1
 	# sort hand
 	hand = msg["state"]["hand"]
@@ -69,7 +77,7 @@ def play_card(msg):
 
 	# lead with middle card
 	else:
-		index = int(length(hand) - 1) / 2);
+		index = int((len(hand) - 1) / 2);
 		card_to_play = hand[index]
 
 	s.send({
@@ -82,7 +90,7 @@ def play_card(msg):
 		})
 
 
-def respond_to_challenge(msg):
+def respond_to_challenge(msg, s):
 	if msg["state"]["your_tricks"] >= msg["state"]["their_tricks"]:
 		hand_value = 0
 		for card in msg["state"]["hand"]:
