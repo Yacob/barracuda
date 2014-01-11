@@ -9,9 +9,9 @@ import time
 import sys
 
 DEFAULT_THRESHOLD = 11
-HIGH_THRESHOLD = 12
-HIGHEST_THRESHOLD = 13
-LOW_THRESHOLD = 10
+HIGH_THRESHOLD = 11
+HIGHEST_THRESHOLD = 12
+LOW_THRESHOLD = 9
 LOWEST_THRESHOLD = 8
 
 DUMB_MODE = False
@@ -170,6 +170,9 @@ def send_challenge (msg, s):
 		# if we tie
 		elif our_card == their_card and our_tricks >= tricks_to_tie:
 			send_challenge = True
+
+		else:
+			send_challenge = meet_threshold(msg, tricks_to_tie)
 
 
 	# don't challenge if we can't win
