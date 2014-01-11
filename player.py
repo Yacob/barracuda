@@ -14,6 +14,8 @@ HIGHEST_THRESHOLD = 13
 LOW_THRESHOLD = 10
 LOWEST_THRESHOLD = 9
 
+DUMB_MODE = False
+
 def sample_bot(host, port):
 	s = SocketLayer(host, port)
 	gameId = None
@@ -67,6 +69,7 @@ def respond_to_request(msg, s):
 
 
 def play_card(msg, s):
+	state = msg["state"]
 	card_to_play = -1
 	our_tricks = msg["state"]["your_tricks"]
 	their_tricks = msg["state"]["their_tricks"]
@@ -85,8 +88,8 @@ def play_card(msg, s):
 				break;
 
 		# force a tie if we are losing
-		if value in hand and our_tricks <= their_tricks:
-			card_to_play = value
+		#if value in hand and our_tricks <= their_tricks:
+		#	card_to_play = value
 
 		if card_to_play == -1:
 			card_to_play = hand[0]
@@ -96,11 +99,29 @@ def play_card(msg, s):
 			card_to_play = hand[0]
 
 
-	# lead with lowest card
 	else:
 		#index = int((len(hand) - 1) / 2);
 		#card_to_play = hand[index]
-		card_to_play = hand[0]
+		if state["in_challenge"] == True:
+			tricks_to_tie = (5 - state["total_tricks"] + our_tricks + their_tricks) / 2
+
+			# calculates the number of relevant cards
+			num_top_cards = tricks_to_tie - our_tricks;
+			hand.reverse()
+
+			# the card immediately after our top cards is at index num_top_cards
+			try:
+				card_to_play = hand[int(num_top_cards)]
+
+			# in the case where it is out of bounds, select the lowest top card
+			except:
+				card_to_play = hand[-1]
+
+			hand.reverse()
+
+		# lead with lowest card
+		else:
+			card_to_play = hand[0]
 
 	s.send({
 		"type": "move",
@@ -226,6 +247,8 @@ def meet_threshold (msg, tricks_to_tie):
 	if "card" in state and threshold < HIGHEST_THRESHOLD:
 		threshold += 1
 
+	if DUMB_MODE == True:
+		threshold = 5
 
 	if (avg_hand_value >= threshold):
 		print("accepting challenge: hand = %i; thresh = %i" % ( avg_hand_value, threshold ))
