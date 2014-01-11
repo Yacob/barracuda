@@ -8,11 +8,11 @@ import struct
 import time
 import sys
 
-DEFAULT_THRESHOLD = 10
-HIGH_THRESHOLD = 11
+DEFAULT_THRESHOLD = 11
+HIGH_THRESHOLD = 12
 HIGHEST_THRESHOLD = 13
-LOW_THRESHOLD = 9
-LOWEST_THRESHOLD = 8
+LOW_THRESHOLD = 10
+LOWEST_THRESHOLD = 9
 
 def sample_bot(host, port):
 	s = SocketLayer(host, port)
@@ -117,6 +117,7 @@ def play_card(msg, s):
 
 def send_challenge (msg, s):
 	state = msg["state"]
+	hand = state["hand"]
 	send_challenge = False
 
 	their_points = state["their_points"]
@@ -132,6 +133,27 @@ def send_challenge (msg, s):
 	if msg["state"]["your_tricks"] >= tricks_to_tie:
 		send_challenge = True
 
+	elif "card" in state:
+		our_card = -1
+		their_card = state["card"]
+
+		# calculate card to play
+		hand.sort()
+		hand.reverse()
+		for card in hand:
+			if card >= their_card:
+				our_card = card
+				break
+
+		# if our card is better and we can tie
+		if our_card > their_card and our_tricks >= tricks_to_tie - 1:
+			send_challenge = True
+
+		# if we tie
+		elif our_card == their_card and our_tricks >= tricks_to_tie:
+			send_challenge = True
+
+
 	# don't challenge if we can't win
 	elif state["their_tricks"] >= tricks_to_tie:
 		return
@@ -142,7 +164,7 @@ def send_challenge (msg, s):
 
 	# calculate threshold
 	else:
-		send_challenge = meet_threshold(msg, tricks_to_win)
+		send_challenge = meet_threshold(msg, tricks_to_tie)
 
 
 	if send_challenge == True:
@@ -157,7 +179,7 @@ def send_challenge (msg, s):
 
 	return send_challenge
 
-def meet_threshold (msg, tricks_to_win):
+def meet_threshold (msg, tricks_to_tie):
 	state = msg["state"]
 	num_tricks = state["total_tricks"]
 	our_tricks = state["your_tricks"]
@@ -174,7 +196,7 @@ def meet_threshold (msg, tricks_to_win):
 	for card in msg["state"]["hand"]:
 		hand_value += card
 		count += 1
-		if count >= tricks_to_win - our_tricks:
+		if count >= tricks_to_tie - our_tricks:
 			break
 
 	avg_hand_value = hand_value / count
@@ -203,13 +225,29 @@ def meet_threshold (msg, tricks_to_win):
 	elif our_tricks == 0 and their_tricks == 1:
 		threshold = HIGH_THRESHOLD
 
+	if (avg_hand_value >= threshold):
+		print("accepting challenge: hand = %i; thresh = %i" % ( avg_hand_value, threshold ))
+	else:
+		print("rejecting challenge: hand = %i; thresh = %i" % ( avg_hand_value, threshold ))
+
 	return avg_hand_value >= threshold
 
 
 
 def respond_to_challenge(msg, s):
-	if meet_threshold(msg):
-		print("accepting challenge: hand = %i; thresh = %i" % ( avg_hand_value, threshold ))
+	state = msg["state"]
+	send_challenge = False
+
+	their_points = state["their_points"]
+	their_tricks = state["their_tricks"]
+
+	our_points = state["your_points"]
+	our_tricks = state["your_tricks"]
+
+	# calculate tricks needed to win
+	tricks_to_tie = (5 - state["total_tricks"] + our_tricks + their_tricks) / 2
+
+	if meet_threshold(msg, tricks_to_tie) or their_points == 9:
 		s.send({
 			"type": "move",
 			"request_id": msg["request_id"],
@@ -218,7 +256,6 @@ def respond_to_challenge(msg, s):
 				}
 			})
 	else:
-		print("rejecting challenge: hand = %i; thresh = %i" % ( avg_hand_value, threshold ))
 		s.send({
 			"type": "move",
 			"request_id": msg["request_id"],
