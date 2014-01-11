@@ -11,10 +11,12 @@ import sys
 DEFAULT_THRESHOLD = 12
 HIGH_THRESHOLD = 12
 HIGHEST_THRESHOLD = 13
-LOW_THRESHOLD = 9
-LOWEST_THRESHOLD = 8
+LOW_THRESHOLD = 9.5
+LOWEST_THRESHOLD = 9
 
 DUMB_MODE = False
+
+MAGIC_SCALE = 10
 
 cards_played = {}
 hands_played = 0
@@ -106,13 +108,13 @@ def sample_bot(host, port):
 
 def loop(player, *args):
 	while True:
-		player(*args)
-		#try:
-		#	player(*args)
-		#except KeyboardInterrupt:
-		#	sys.exit(0)
-		#except Exception as e:
-		#	print(e)
+		#player(*args)
+		try:
+			player(*args)
+		except KeyboardInterrupt:
+			sys.exit(0)
+		except Exception as e:
+			print(e)
 		time.sleep(10)
 
 
@@ -139,6 +141,7 @@ def play_card(msg, s):
 	card_to_play = -1
 	our_tricks = msg["state"]["your_tricks"]
 	their_tricks = msg["state"]["their_tricks"]
+	tricks_to_tie = (5 - state["total_tricks"] + our_tricks + their_tricks) / 2
 
 	# sort hand
 	hand = msg["state"]["hand"]
@@ -152,7 +155,10 @@ def play_card(msg, s):
 		print ("there are now %i '%i' cards" % (cards_played["%i" % value], value))
 
 		for card in hand:
-			if card > value:
+			if tricks_to_tie - their_tricks <= 1 and card >= value:
+				card_to_play = card;
+				break
+			elif card > value:
 				card_to_play = card;
 				break;
 
@@ -171,7 +177,6 @@ def play_card(msg, s):
 	else:
 		#index = int((len(hand) - 1) / 2);
 		#card_to_play = hand[index]
-		tricks_to_tie = (5 - state["total_tricks"] + our_tricks + their_tricks) / 2
 
 		# calculates the number of relevant cards
 		num_top_cards = tricks_to_tie - our_tricks;
@@ -236,11 +241,7 @@ def send_challenge (msg, s):
 		hand.sort()
 		hand.reverse()
 		for card in hand:
-			if tricks_to_tie - their_tricks <= 1 and card >= their_card:
-				our_card = card
-				break
-
-			elif card > their_card:
+			if card > their_card:
 				our_card = card
 				break
 
@@ -328,7 +329,7 @@ def meet_threshold (msg, tricks_to_tie):
 		threshold += 1
 
 	if state["your_points"] == 9:
-		threshold -= 1
+		threshold -= 1.5
 
 	if DUMB_MODE == True:
 		threshold = 7
@@ -339,7 +340,7 @@ def meet_threshold (msg, tricks_to_tie):
 		threshold_scalar += (cards_played[key] * int(key))
 		total_cards_in_deck += cards_played[key]
 
-	threshold_scalar /= (total_cards_in_deck * 7 + 1)
+	threshold_scalar /= (total_cards_in_deck * 7 + MAGIC_SCALE)
 
 	print("scalar is %.2f" % threshold_scalar)
 	threshold *= threshold_scalar
