@@ -332,12 +332,12 @@ def meet_threshold (msg, tricks_to_tie):
 	threshold_scalar = 0
 	total_cards_in_deck = 0
 	for key in cards_played:
-		threshold_scalar += (cards_played[key] * key)
+		threshold_scalar += (cards_played[key] * int(key))
 		total_cards_in_deck += cards_played[key]
 
 	threshold_scalar /= (total_cards_in_deck * 7)
 
-	print("scalar is " + threshold_scalar)
+	print("scalar is %.2f" % threshold_scalar)
 	threshold *= threshold_scalar
 
 	if (avg_hand_value > threshold or avg_hand_value >= HIGHEST_THRESHOLD):
