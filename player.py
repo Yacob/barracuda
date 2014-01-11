@@ -67,10 +67,10 @@ def play_card(msg):
 			card_to_play = hand[0]
 
 
-	# leading with middle card
+	# lead with middle card
 	else:
 		index = int(length(hand) - 1) / 2);
-		card_to_play = hand[0]
+		card_to_play = hand[index]
 
 	s.send({
 		"type": "move",
@@ -80,8 +80,6 @@ def play_card(msg):
 			"card": card_to_play
 			}
 		})
-
-
 
 
 def respond_to_challenge(msg):
