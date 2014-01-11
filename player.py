@@ -1,5 +1,5 @@
 #!/usr/bin/python
-
+# vim: set ts=4 noexpandtab:
 # This should work in both recent Python 2 and Python 3.
 
 import socket
@@ -22,7 +22,7 @@ def sample_bot(host, port):
 			respond_to_request(msg)
 		elif msg["type"] == "greetings_program":
 			print("connected to the server.")
-			
+
 def loop(player, *args):
 	while True:
 		try:
