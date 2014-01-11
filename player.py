@@ -8,9 +8,9 @@ import struct
 import time
 import sys
 
-DEFAULT_THRESHOLD = 11
-HIGH_THRESHOLD = 11
-HIGHEST_THRESHOLD = 12
+DEFAULT_THRESHOLD = 12
+HIGH_THRESHOLD = 12
+HIGHEST_THRESHOLD = 13
 LOW_THRESHOLD = 9
 LOWEST_THRESHOLD = 8
 
@@ -236,7 +236,11 @@ def send_challenge (msg, s):
 		hand.sort()
 		hand.reverse()
 		for card in hand:
-			if card > their_card:
+			if tricks_to_tie - their_tricks <= 1 and card >= their_card:
+				our_card = card
+				break
+
+			elif card > their_card:
 				our_card = card
 				break
 
