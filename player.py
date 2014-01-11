@@ -55,6 +55,7 @@ def play_card(msg):
 	# sort hand
 	hand = msg["state"]["hand"]
 	hand.sort()
+
 	# responding to played card
 	if "card" in msg["state"]:
 		value = msg["state"]["card"]
@@ -66,17 +67,19 @@ def play_card(msg):
 			card_to_play = hand[0]
 
 
-		# leading with a card
+	# leading with middle card
 	else:
+		index = int(length(hand) - 1) / 2);
 		card_to_play = hand[0]
-		s.send({
-			"type": "move",
-			"request_id": msg["request_id"],
-			"response": {
-				"type": "play_card",
-				"card": card_to_play
-				}
-			})
+
+	s.send({
+		"type": "move",
+		"request_id": msg["request_id"],
+		"response": {
+			"type": "play_card",
+			"card": card_to_play
+			}
+		})
 
 
 
